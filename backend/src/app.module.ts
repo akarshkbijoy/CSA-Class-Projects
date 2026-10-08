@@ -5,21 +5,31 @@ import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { MongooseModule } from '@nestjs/mongoose';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { ProjectsModule } from './projects/projects.module.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 @Module({
   imports: [
-    MongooseModule.forRoot('mongodb+srv://akarshkbijoy_db_user:oR1kOkGSp8dSxl0q@cluster0.9w39ztw.mongodb.net/csa_class_projects?appName=Cluster0'),
+    MongooseModule.forRoot(
+      process.env.MONGODB_URI ||
+        'mongodb+srv://akarshkbijoy_db_user:oR1kOkGSp8dSxl0q@cluster0.9w39ztw.mongodb.net/csa_class_projects?appName=Cluster0',
+    ),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      autoSchemaFile: join(__dirname, '../src/schema.gql'),
       sortSchema: true,
       playground: true,
       context: ({ req, res }: { req: any; res: any }) => ({ req, res }),
     }),
     UsersModule,
     AuthModule,
+    ProjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

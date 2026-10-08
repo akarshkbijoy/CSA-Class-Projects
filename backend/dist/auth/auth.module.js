@@ -5,13 +5,32 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { MongooseModule } from '@nestjs/mongoose';
 import { AuthService } from './auth.service.js';
 import { AuthResolver } from './auth.resolver.js';
+import { JwtStrategy } from './jwt.strategy.js';
+import { GqlAuthGuard } from './gql-auth.guard.js';
+import { User, UserSchema } from '../users/user.schema.js';
+import { Otp, OtpSchema } from './otp.schema.js';
 let AuthModule = class AuthModule {
 };
 AuthModule = __decorate([
     Module({
-        providers: [AuthService, AuthResolver]
+        imports: [
+            PassportModule,
+            JwtModule.register({
+                secret: process.env.JWT_SECRET || 'super_secret_default_key',
+                signOptions: { expiresIn: '7d' },
+            }),
+            MongooseModule.forFeature([
+                { name: User.name, schema: UserSchema },
+                { name: Otp.name, schema: OtpSchema },
+            ]),
+        ],
+        providers: [AuthService, AuthResolver, JwtStrategy, GqlAuthGuard],
+        exports: [AuthService, JwtModule],
     })
 ], AuthModule);
 export { AuthModule };

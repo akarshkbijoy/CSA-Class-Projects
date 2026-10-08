@@ -1,5 +1,6 @@
 import './globals.css';
 import { Analytics } from '@vercel/analytics/react';
+import ApolloWrapper from '../components/ApolloWrapper';
 
 export const metadata = {
   title: 'BuildFolio | 2024-28 CS-A Student Projects',
@@ -146,7 +147,9 @@ export default function RootLayout({ children }) {
         `}} />
       </head>
       <body>
-        {children}
+        <ApolloWrapper>
+          {children}
+        </ApolloWrapper>
         <Analytics />
       </body>
     </html>

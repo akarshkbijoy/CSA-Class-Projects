@@ -20,7 +20,13 @@ let UsersService = class UsersService {
         this.userModel = userModel;
     }
     async findAll() {
-        return this.userModel.find().exec();
+        return this.userModel.find().select('-password').exec();
+    }
+    async findById(id) {
+        return this.userModel.findById(id).select('-password').exec();
+    }
+    async findByEmail(email) {
+        return this.userModel.findOne({ email }).exec();
     }
 };
 UsersService = __decorate([
