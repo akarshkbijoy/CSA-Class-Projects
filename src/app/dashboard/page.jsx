@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import ImageCropper from '@/components/ImageCropper';
+import { useQuery, useMutation, useApolloClient } from '@apollo/client/react';
+import { GET_ME, GET_MY_PROJECTS, GET_PROJECT_BY_ID } from '@/lib/graphql/queries';
+import { CREATE_PROJECT_MUTATION, UPDATE_PROJECT_MUTATION, DELETE_PROJECT_MUTATION } from '@/lib/graphql/mutations';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
   const [projects, setProjects] = useState([]);
-  const [authChecking, setAuthChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
@@ -35,25 +37,25 @@ export default function Dashboard() {
   const coverRef = useRef(null);
   const galleryRef = useRef(null);
 
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (!data) { router.push('/login'); return; }
-        setUser(data);
-        setAuthChecking(false);
-        fetchMyProjects(data.name);
-      })
-      .catch(() => router.push('/login'));
-  }, []);
+  const { data: meData, loading: authChecking } = useQuery(GET_ME);
+  const { data: projectsData, refetch: refetchProjects } = useQuery(GET_MY_PROJECTS);
+  
+  const [createProject] = useMutation(CREATE_PROJECT_MUTATION);
+  const [updateProject] = useMutation(UPDATE_PROJECT_MUTATION);
+  const [deleteProjectMutation] = useMutation(DELETE_PROJECT_MUTATION);
+  // Also need apollo client manually to fetch a single project for editing:
+  const client = useApolloClient();
 
-  const fetchMyProjects = async (name) => {
-    const res = await fetch('/api/projects');
-    if (res.ok) {
-      const all = await res.json();
-      setProjects((Array.isArray(all) ? all : []).filter(p => p.studentName === name));
+  useEffect(() => {
+    if (!authChecking) {
+      if (!meData?.me) {
+        router.push('/login');
+      } else {
+        setUser(meData.me);
+        setProjects(projectsData?.getMyProjects || []);
+      }
     }
-  };
+  }, [authChecking, meData, projectsData, router]);
 
   const processImage = (file) => new Promise(resolve => {
     const reader = new FileReader();
@@ -125,11 +127,17 @@ export default function Dashboard() {
         coverImage, screenshots: galleryImages, techStack: techTags,
         contributors: contributors.filter(c => c.name.trim()), category,
       };
-      const url = isEditing ? `/api/projects/${editId}` : '/api/projects';
-      const method = isEditing ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (res.ok) { resetForm(); if (user) fetchMyProjects(user.name); }
-      else alert('Failed to save project. Please try again.');
+
+      if (isEditing) {
+        await updateProject({ variables: { updateProjectInput: { _id: editId, ...payload } } });
+      } else {
+        await createProject({ variables: { createProjectInput: payload } });
+      }
+      
+      resetForm();
+      refetchProjects();
+    } catch (err) {
+      alert('Failed to save project. Please try again. ' + err.message);
     } finally { setSubmitting(false); }
   };
 
@@ -175,26 +183,34 @@ export default function Dashboard() {
   };
 
   const startEdit = async (id) => {
-    const res = await fetch(`/api/projects/${id}`);
-    if (!res.ok) return;
-    const data = await res.json();
-    setTitle(data.title); setTeamName(data.teamName || ''); setOverview(data.description || ''); setImpact(data.impact || '');
-    setDemoUrl(data.demoUrl || ''); setYoutubeUrl(data.youtubeUrl || ''); setGithubUrl(data.githubUrl || '');
-    setCoverImage(data.coverImage); setGalleryImages(data.screenshots || []);
-    setTechTags(data.techStack || []); setCategory(data.category || 'Web Development');
-    setContributors(data.contributors?.length ? data.contributors : [{ name: '', role: '' }]);
-    setEditId(id); setIsEditing(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const { data } = await client.query({ query: GET_PROJECT_BY_ID, variables: { id } });
+      const p = data?.getProjectById;
+      if (!p) return;
+      setTitle(p.title); setTeamName(p.teamName || ''); setOverview(p.description || ''); setImpact(p.impact || '');
+      setDemoUrl(p.demoUrl || ''); setYoutubeUrl(p.youtubeUrl || ''); setGithubUrl(p.githubUrl || '');
+      setCoverImage(p.coverImage); setGalleryImages(p.screenshots || []);
+      setTechTags(p.techStack || []); setCategory(p.category || 'Web Development');
+      setContributors(p.contributors?.length ? p.contributors.map(c => ({ name: c.name, role: c.role })) : [{ name: '', role: '' }]);
+      setEditId(id); setIsEditing(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const handleDelete = async (id) => {
     if (!confirm('Delete this project? This cannot be undone.')) return;
-    const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-    if (res.ok && user) fetchMyProjects(user.name);
+    try {
+      await deleteProjectMutation({ variables: { id } });
+      refetchProjects();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const logout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
+  const logout = () => {
+    localStorage.removeItem('token');
     window.location.href = '/';
   };
 

@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
+import { useMutation } from '@apollo/client/react';
+import { REGISTER_MUTATION, SEND_OTP_MUTATION } from '@/lib/graphql/mutations';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -34,23 +36,19 @@ export default function Register() {
     return () => document.removeEventListener('mousemove', onMove);
   }, []);
 
+  const [sendOtp] = useMutation(SEND_OTP_MUTATION);
+  const [registerMutation] = useMutation(REGISTER_MUTATION);
+
   const handleGetOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setShowOtpModal(true);
-      } else {
-        setError(data.error || 'Failed to send OTP.');
-      }
-    } catch { setError('Unexpected error. Please try again.'); }
+      await sendOtp({ variables: { email } });
+      setShowOtpModal(true);
+    } catch (err) { 
+      setError(err.message || 'Unexpected error. Please try again.'); 
+    }
     finally { setLoading(false); }
   };
 
@@ -64,20 +62,18 @@ export default function Register() {
     setOtpLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password, otp: otpValue }),
+      const { data } = await registerMutation({
+        variables: { registerInput: { name, email, password, otp: otpValue } },
       });
-      const data = await res.json();
-      if (res.ok) {
+      if (data?.register?.token) {
+        localStorage.setItem('token', data.register.token);
         setShowOtpModal(false);
         router.push('/');
         router.refresh();
-      } else {
-        setError(data.error || 'Registration failed.');
       }
-    } catch { setError('Unexpected error. Please try again.'); }
+    } catch (err) { 
+      setError(err.message || 'Unexpected error. Please try again.'); 
+    }
     finally { setOtpLoading(false); }
   };
 

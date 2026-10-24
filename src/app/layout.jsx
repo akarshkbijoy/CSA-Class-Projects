@@ -1,6 +1,12 @@
 import './globals.css';
 import { Analytics } from '@vercel/analytics/react';
 import ApolloWrapper from '../components/ApolloWrapper';
+import * as Sentry from '@sentry/nextjs';
+
+Sentry.init({
+  dsn: process.env.NEXT_PUBLIC_SENTRY_DSN || "https://dummy@o0.ingest.sentry.io/0",
+  tracesSampleRate: 1.0,
+});
 
 export const metadata = {
   title: 'BuildFolio | 2024-28 CS-A Student Projects',

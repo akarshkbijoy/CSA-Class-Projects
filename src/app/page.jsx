@@ -7,14 +7,14 @@ import ProjectCard from '@/components/ProjectCard';
 import DotField from '@/components/DotField';
 import RotatingText from '@/components/RotatingText';
 
+import { useQuery } from '@apollo/client/react';
+import { GET_PROJECTS, GET_ME } from '@/lib/graphql/queries';
+
 export default function Home() {
-  const [projects, setProjects] = useState([]);
-  const [user, setUser] = useState(null);
   const [search, setSearch] = useState('');
   const [filterOption, setFilterOption] = useState('Recent');
   const [showFilter, setShowFilter] = useState(false);
   const filterRef = useRef(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -26,16 +26,17 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const [token, setToken] = useState(null);
   useEffect(() => {
-    Promise.all([
-      fetch('/api/projects').then(r => r.ok ? r.json() : []),
-      fetch('/api/auth/me').then(r => r.ok ? r.json() : null),
-    ]).then(([projectsData, userData]) => {
-      setProjects(Array.isArray(projectsData) ? projectsData : []);
-      if (userData && userData.user) setUser(userData.user);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    setToken(localStorage.getItem('token'));
   }, []);
+
+  const { data: projectsData, loading: projectsLoading, error: projectsError } = useQuery(GET_PROJECTS);
+  const { data: meData } = useQuery(GET_ME, { skip: !token });
+
+  const projects = Array.isArray(projectsData?.getProjects) ? projectsData.getProjects : [];
+  const user = meData?.me || null;
+  const loading = projectsLoading;
 
   let filtered = projects.filter(p =>
     p.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -144,13 +145,15 @@ export default function Home() {
             <div className="flex justify-center items-center py-20">
               <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
             </div>
+          ) : projectsError ? (
+            <div className="text-center py-16 text-error font-body-lg">
+              Failed to load projects: {projectsError.message}
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {filtered.map(project => (
                 <ProjectCard key={project._id} project={project} user={user} />
               ))}
-
-
 
               {filtered.length === 0 && search && (
                 <div className="col-span-full text-center py-16 text-on-surface-variant font-body-lg">

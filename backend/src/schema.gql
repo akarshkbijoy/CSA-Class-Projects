@@ -1,0 +1,129 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+type AuthResponse {
+  token: String!
+  user: User!
+}
+
+type Comment {
+  _id: ID!
+  createdAt: DateTime!
+  text: String!
+  user: ID
+  userName: String
+}
+
+type Contributor {
+  name: String!
+  role: String
+}
+
+input ContributorInput {
+  name: String!
+  role: String
+}
+
+input CreateProjectInput {
+  category: String
+  contributors: [ContributorInput!]
+  coverImage: String
+  demoUrl: String
+  description: String!
+  githubUrl: String
+  impact: String
+  screenshots: [String!]
+  studentName: String!
+  teamName: String
+  techStack: [String!]
+  title: String!
+  youtubeUrl: String
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+input LoginInput {
+  email: String!
+  password: String!
+}
+
+type MessageResponse {
+  message: String!
+}
+
+type Mutation {
+  addComment(projectId: ID!, text: String!): Project!
+  createProject(createProjectInput: CreateProjectInput!): Project!
+  deleteComment(commentId: ID!, projectId: ID!): Project!
+  deleteProject(id: ID!): Boolean!
+  login(loginInput: LoginInput!): AuthResponse!
+  register(registerInput: RegisterInput!): AuthResponse!
+  sendOtp(email: String!): MessageResponse!
+  toggleLike(projectId: ID!): Project!
+  updateProject(updateProjectInput: UpdateProjectInput!): Project!
+}
+
+type Project {
+  _id: ID!
+  category: String
+  comments: [Comment!]
+  contributors: [Contributor!]
+  coverImage: String
+  createdAt: DateTime!
+  demoUrl: String
+  description: String!
+  githubUrl: String
+  impact: String
+  likes: [String!]
+  screenshots: [String!]
+  studentName: String!
+  teamName: String
+  techStack: [String!]
+  title: String!
+  updatedAt: DateTime!
+  userId: ID!
+  youtubeUrl: String
+}
+
+type Query {
+  getMyProjects: [Project!]!
+  getProjectById(id: ID!): Project!
+  getProjects(category: String, search: String): [Project!]!
+  getUsers: [User!]!
+  me: User!
+}
+
+input RegisterInput {
+  email: String!
+  name: String!
+  password: String!
+}
+
+input UpdateProjectInput {
+  category: String
+  contributors: [ContributorInput!]
+  coverImage: String
+  demoUrl: String
+  description: String
+  githubUrl: String
+  id: String!
+  impact: String
+  screenshots: [String!]
+  studentName: String
+  teamName: String
+  techStack: [String!]
+  title: String
+  youtubeUrl: String
+}
+
+type User {
+  _id: ID!
+  createdAt: DateTime!
+  email: String!
+  name: String!
+  updatedAt: DateTime!
+}

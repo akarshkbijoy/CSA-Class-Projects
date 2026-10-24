@@ -4,34 +4,32 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
+import { useMutation } from '@apollo/client/react';
+import { LOGIN_MUTATION } from '@/lib/graphql/mutations';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [login, { loading }] = useMutation(LOGIN_MUTATION);
   const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { data } = await login({
+        variables: { loginInput: { email, password } },
       });
-      if (res.ok) {
+      if (data?.login?.token) {
+        localStorage.setItem('token', data.login.token);
         router.push('/');
         router.refresh();
-      } else {
-        const data = await res.json();
-        setError(data.error || 'Invalid email or password.');
       }
-    } catch { setError('Unexpected error. Please try again.'); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(err.message || 'Invalid email or password.');
+    }
   };
 
   return (

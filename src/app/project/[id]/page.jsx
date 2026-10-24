@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQuery, useMutation } from '@apollo/client/react';
+import { GET_ME, GET_PROJECT_BY_ID } from '@/lib/graphql/queries';
+import {
+  TOGGLE_LIKE_MUTATION,
+  ADD_COMMENT_MUTATION,
+  DELETE_COMMENT_MUTATION,
+  UPDATE_PROJECT_MUTATION,
+  DELETE_PROJECT_MUTATION,
+} from '@/lib/graphql/mutations';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import ImageCropper from '@/components/ImageCropper';
@@ -23,7 +32,6 @@ export default function ProjectDetail() {
   const router = useRouter();
   const [project, setProject] = useState(null);
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [commentText, setCommentText] = useState('');
   const [isLiking, setIsLiking] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
@@ -57,19 +65,36 @@ export default function ProjectDetail() {
   const coverRef = useRef(null);
   const galleryRef = useRef(null);
 
+  const [token, setToken] = useState(null);
   useEffect(() => {
-    Promise.all([
-      fetch('/api/auth/me', { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-      fetch(`/api/projects/${id}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-    ]).then(([userData, projectData]) => {
-      if (userData && userData.user) setUser(userData.user);
-      if (projectData) setProject(projectData);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-  }, [id]);
+    setToken(localStorage.getItem('token'));
+  }, []);
 
-  const refetch = () =>
-    fetch(`/api/projects/${id}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(d => { if (d) setProject(d); });
+  const [toggleLike] = useMutation(TOGGLE_LIKE_MUTATION);
+  const [addComment] = useMutation(ADD_COMMENT_MUTATION);
+  const [deleteComment] = useMutation(DELETE_COMMENT_MUTATION);
+  const [updateProject] = useMutation(UPDATE_PROJECT_MUTATION);
+  const [deleteProject] = useMutation(DELETE_PROJECT_MUTATION);
+
+  const { data: meData } = useQuery(GET_ME, { skip: !token });
+  const { data: projectData, loading: projectLoading, refetch } = useQuery(GET_PROJECT_BY_ID, {
+    variables: { id },
+    skip: !id,
+  });
+
+  useEffect(() => {
+    if (projectData?.getProjectById) {
+      setProject(projectData.getProjectById);
+    }
+  }, [projectData]);
+
+  useEffect(() => {
+    if (meData?.me) {
+      setUser(meData.me);
+    }
+  }, [meData]);
+
+  const loading = projectLoading;
 
   const handleLike = async () => {
     if (!user) return alert('Please log in to like projects.');
@@ -87,9 +112,15 @@ export default function ProjectDetail() {
     });
 
     setIsLiking(true);
-    await fetch(`/api/projects/${id}/like`, { method: 'POST' });
-    await refetch();
-    setIsLiking(false);
+    try {
+      await toggleLike({ variables: { projectId: id } });
+      await refetch();
+    } catch (err) {
+      console.error(err);
+      await refetch();
+    } finally {
+      setIsLiking(false);
+    }
   };
 
   const handleComment = async (e) => {
@@ -110,16 +141,12 @@ export default function ProjectDetail() {
     setProject(prev => ({ ...prev, comments: [...(prev.comments || []), optimisticComment] }));
 
     try {
-      const res = await fetch(`/api/projects/${id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: textToSubmit }),
+      const { data } = await addComment({
+        variables: { projectId: id, text: textToSubmit },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setProject(prev => ({ ...prev, comments: data.comments }));
+      if (data?.addComment?.comments) {
+        setProject(prev => ({ ...prev, comments: data.addComment.comments }));
       } else {
-        // Rollback on failure
         await refetch();
       }
     } catch {
@@ -137,10 +164,13 @@ export default function ProjectDetail() {
     setProject(prev => ({ ...prev, comments: prev.comments.filter(c => c._id !== commentToDelete._id) }));
     
     try {
-      const res = await fetch(`/api/projects/${id}/comments/${commentToDelete._id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        alert('Failed to delete comment.');
-        await refetch(); // rollback
+      const { data } = await deleteComment({
+        variables: { projectId: id, commentId: commentToDelete._id },
+      });
+      if (data?.deleteComment?.comments) {
+        setProject(prev => ({ ...prev, comments: data.deleteComment.comments }));
+      } else {
+        await refetch();
       }
     } catch {
       await refetch();
@@ -287,17 +317,18 @@ export default function ProjectDetail() {
         contributors: editContributors.filter(c => c.name.trim()),
         category: editCategory,
       };
-      const res = await fetch(`/api/projects/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      await updateProject({
+        variables: {
+          updateProjectInput: {
+            id,
+            ...payload,
+          },
+        },
       });
-      if (res.ok) {
-        await refetch();
-        setIsEditing(false);
-      } else {
-        alert('Failed to save changes. Please try again.');
-      }
+      await refetch();
+      setIsEditing(false);
+    } catch (err) {
+      alert(err.message || 'Failed to save changes. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -306,12 +337,10 @@ export default function ProjectDetail() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        router.push('/');
-      } else {
-        alert('Failed to delete project. Please try again.');
-      }
+      await deleteProject({ variables: { id } });
+      router.push('/');
+    } catch (err) {
+      alert(err.message || 'Failed to delete project. Please try again.');
     } finally {
       setDeleting(false);
       setShowDeleteConfirm(false);

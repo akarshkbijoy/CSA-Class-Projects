@@ -11,7 +11,7 @@ import { Otp, OtpSchema } from './otp.schema.js';
 
 @Module({
   imports: [
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'super_secret_default_key',
       signOptions: { expiresIn: '7d' },
@@ -22,6 +22,6 @@ import { Otp, OtpSchema } from './otp.schema.js';
     ]),
   ],
   providers: [AuthService, AuthResolver, JwtStrategy, GqlAuthGuard],
-  exports: [AuthService, JwtModule],
+  exports: [AuthService, JwtModule, PassportModule, GqlAuthGuard],
 })
 export class AuthModule {}

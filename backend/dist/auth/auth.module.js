@@ -19,7 +19,7 @@ let AuthModule = class AuthModule {
 AuthModule = __decorate([
     Module({
         imports: [
-            PassportModule,
+            PassportModule.register({ defaultStrategy: 'jwt' }),
             JwtModule.register({
                 secret: process.env.JWT_SECRET || 'super_secret_default_key',
                 signOptions: { expiresIn: '7d' },
@@ -30,7 +30,7 @@ AuthModule = __decorate([
             ]),
         ],
         providers: [AuthService, AuthResolver, JwtStrategy, GqlAuthGuard],
-        exports: [AuthService, JwtModule],
+        exports: [AuthService, JwtModule, PassportModule, GqlAuthGuard],
     })
 ], AuthModule);
 export { AuthModule };

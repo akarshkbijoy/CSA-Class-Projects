@@ -5,16 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import Logo from '@/components/Logo';
+import { useQuery } from '@apollo/client/react';
+import { GET_ME } from '@/lib/graphql/queries';
 
 export default function Header() {
-  const [user, setUser] = useState(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileRef = useRef(null);
   const router = useRouter();
 
-  useEffect(() => {
-    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(data => { if (data && data.user) setUser(data.user); });
-  }, []);
+  const { data: meData } = useQuery(GET_ME, { fetchPolicy: 'cache-and-network' });
+  const user = meData?.me || null;
 
   useEffect(() => {
     const nav = document.querySelector('nav[data-topnav]');
@@ -37,9 +37,8 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const logout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setUser(null);
+  const logout = () => {
+    localStorage.removeItem('token');
     window.location.href = '/';
   };
 
