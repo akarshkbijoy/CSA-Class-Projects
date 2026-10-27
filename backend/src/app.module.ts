@@ -17,8 +17,11 @@ const __dirname = dirname(__filename);
 @Module({
   imports: [
     MongooseModule.forRoot(
-      process.env.MONGODB_URI ||
-        'mongodb+srv://akarshkbijoy_db_user:oR1kOkGSp8dSxl0q@cluster0.9w39ztw.mongodb.net/csa_class_projects?appName=Cluster0',
+      (() => {
+        const uri = process.env.MONGODB_URI;
+        if (!uri) throw new Error('MONGODB_URI environment variable is not set');
+        return uri;
+      })(),
     ),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,

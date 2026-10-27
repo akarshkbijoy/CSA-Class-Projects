@@ -31,8 +31,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — ignore real secrets, keep the example template
+.env
+.env.*
+!.env.example
 
 # vercel
 .vercel
@@ -43,3 +45,10 @@ next-env.d.ts
 
 # reference design files
 stitch_student_project_showcase/
+
+# backend build artifacts
+backend/dist/
+
+# local environment files
+.env
+backend/.env
