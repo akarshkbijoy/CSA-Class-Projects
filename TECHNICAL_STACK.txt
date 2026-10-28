@@ -1,0 +1,216 @@
+================================================================================
+                    BUILDFOLIO — TECHNICAL STACK SPECIFICATION
+          Computer Science Section A (CS-A 2024–2028) Projects Showcase
+================================================================================
+
+1. PROJECT OVERVIEW
+--------------------------------------------------------------------------------
+Project Name       : BuildFolio (CSA Class Projects Showcase)
+Description        : A modern, production-grade web application platform 
+                     engineered to showcase projects, apps, and innovations 
+                     developed by students of Computer Science Section A.
+Architecture Style : Decoupled Full-Stack Web Application (Microservices-ready)
+Primary Interface  : Code-First GraphQL API + Dynamic React/Next.js Client
+Target Deployment  : Containerized (Docker & Docker Compose / Kubernetes)
+
+
+2. HIGH-LEVEL SYSTEM ARCHITECTURE
+--------------------------------------------------------------------------------
+The application is structured into decoupled, independently deployable tiers:
+
+ +------------------------------------------------------------------------+
+ |                         CLIENT / PRESENTATION TIER                    |
+ |                                                                        |
+ |   Next.js 16 (App Router + Turbopack) | React 19 | Tailwind CSS        |
+ |   Apollo Client (GraphQL Queries, Mutations, In-Memory Caching)        |
+ |   Sentry Client & Edge SDKs | GSAP & Framer Motion                     |
+ +-----------------------------------+------------------------------------+
+                                     |
+                                     | GraphQL over HTTP (POST /graphql)
+                                     v
+ +------------------------------------------------------------------------+
+ |                          API / APPLICATION TIER                        |
+ |                                                                        |
+ |   NestJS 12 Framework (TypeScript modular enterprise architecture)     |
+ |   Apollo Server 5.5 (@nestjs/graphql code-first schema generation)     |
+ |   Passport.js + JWT Strategy (Stateless Authentication)                |
+ |   Nodemailer (OTP verification & email dispatch)                       |
+ |   Sentry Node SDK & Profiling (Application Performance Monitoring)     |
+ +-----------------------------------+------------------------------------+
+                                     |
+                                     | MongoDB Wire Protocol (Mongoose ODM)
+                                     v
+ +------------------------------------------------------------------------+
+ |                             DATA STORAGE TIER                          |
+ |                                                                        |
+ |   MongoDB 7+ (Document Database / MongoDB Atlas Cloud Cluster)         |
+ |   Collections: Users, Projects, Comments, OTP Tokens                   |
+ |   Containerized Mongo instance with persistent Docker volume storage   |
+ +------------------------------------------------------------------------+
+
+
+3. DETAILED COMPONENT BREAKDOWN
+--------------------------------------------------------------------------------
+
+A. FRONTEND LAYER (WEB CLIENT)
+--------------------------------------------------------------------------------
+  * Core Framework:
+    - Next.js 16.2.9 (React framework utilizing App Router and Server Components)
+    - Bundler / Compiler: Turbopack (Next.js native high-performance bundler)
+    - Output Mode: Standalone (`output: "standalone"` for minimal container footprint)
+
+  * UI Runtime & State Management:
+    - React 19.2.4 & React-DOM 19.2.4
+    - Apollo Client 4.3.0 (@apollo/client) for declarative GraphQL data fetching,
+      optimistic UI updates, and normalized in-memory caching.
+
+  * Styling & Visual Design:
+    - Tailwind CSS with @tailwindcss/typography (utility-first, responsive design)
+    - Glassmorphism, tailored dark/light aesthetic, customized HSL color palette
+    - Lucide React & custom SVG icons
+
+  * Animation & Motion Engine:
+    - GSAP 3.15.0 (GreenSock Animation Platform) for timeline orchestrations
+    - Motion / Framer Motion 12.42.2 for smooth page transitions and micro-interactions
+
+  * Content Rendering & Media Utilities:
+    - react-markdown 10.1.0 & remark-breaks 4.0.0 (dynamic markdown rendering)
+    - react-easy-crop 6.1.0 (client-side interactive image cropping & adjustments)
+
+  * Observability & Telemetry:
+    - @sentry/nextjs 11.6.0 (Client-side, server-side, and edge error monitoring)
+    - @vercel/analytics 2.0.1 (Web vitals, visitor analytics, performance metrics)
+
+
+B. BACKEND LAYER (API SERVICES)
+--------------------------------------------------------------------------------
+  * Application Framework:
+    - NestJS 12.0.1 (Enterprise-grade, scalable Node.js progressive framework)
+    - Language: TypeScript 6.0.2 with strict typing and ES Module (`"type": "module"`)
+    - Architectural Pattern: Modular Dependency Injection (Modules, Controllers,
+      Resolvers, Services, Decorators, Guards, and Strategies)
+
+  * API Engine:
+    - GraphQL API utilizing Apollo Server 5.5.1 and @nestjs/apollo 14.0.1
+    - Approach: Code-First (Auto-generates `schema.gql` from TypeScript decorators)
+    - Web Server Adapter: @as-integrations/express5 / Express 5 platform
+
+  * Database Object-Document Mapping (ODM):
+    - Mongoose 9.10.1 with @nestjs/mongoose 12.0.0
+    - Enforced schema models:
+        1. Users Schema: Credentials, profiles, role permissions, project references
+        2. Projects Schema: Project metadata, GitHub URLs, live links, tags, likes
+        3. Comments Schema: Nested and relational threaded discussions
+        4. OTP Schema: Expiring verification tokens for email authentication
+
+  * Authentication & Security:
+    - Passport.js (@nestjs/passport, passport-jwt, passport-local)
+    - JWT (JSON Web Tokens via @nestjs/jwt 12.0.2) for stateless bearer authentication
+    - Bcrypt.js 3.0.3 for salted cryptographic password hashing
+    - Guards: Custom GqlAuthGuard for GraphQL execution context protection
+    - Input Validation: class-validator 0.15.1 and class-transformer 0.5.1
+
+  * Notification & Mail Services:
+    - Nodemailer 10.0.10 for transactional OTP emails and password resets
+
+  * Backend Observability:
+    - @sentry/node 11.6.0 & @sentry/profiling-node 11.6.0 (Tracing, APM, Profiling)
+
+
+C. DATABASE & PERSISTENCE
+--------------------------------------------------------------------------------
+  * Database Engine : MongoDB (NoSQL Document Store)
+  * Hosting Options : 
+      - Production: MongoDB Atlas Cloud (Multi-region replica set)
+      - Local / Docker: Official `mongo:latest` image with persistent named volume 
+        (`mongodb_data:/data/db`)
+  * Data Modeling Features:
+      - Embedded document structures for comments and feedback
+      - TTL (Time-To-Live) indexes for automated OTP token expiration
+      - Normalized relational references for user-authored projects
+
+
+4. DEVOPS, CONTAINERIZATION & CLOUD ORCHESTRATION
+--------------------------------------------------------------------------------
+
+A. DOCKER CONTAINERIZATION
+  * Multi-Stage Builds:
+      - Frontend Dockerfile: 3-stage build (deps -> builder -> runner) using 
+        lightweight `node:22-alpine` image.
+      - Next.js Standalone Packaging: Only outputs necessary traces, reducing final 
+        image size from ~1.5GB down to ~150MB.
+      - Backend Dockerfile: Multi-stage build (build -> production) producing a lean 
+        NestJS production bundle.
+  * Security in Containers:
+      - Runs under non-privileged system user (`nextjs:nodejs`, UID 1001).
+      - Strict `.dockerignore` files preventing `node_modules`, build artifacts, and 
+        secret `.env` files from leaking into image layers.
+
+B. DOCKER COMPOSE ORCHESTRATION
+  * Service Topology:
+      - `frontend` : Port 3000 (Next.js Application)
+      - `backend`  : Port 4000 (NestJS GraphQL Server)
+      - `mongodb`  : Port 27017 (Mongo Document Database)
+  * Features:
+      - Automatic internal DNS discovery between services (e.g., `http://backend:4000/graphql`)
+      - Health dependencies (`depends_on`) ensuring proper boot sequence.
+      - Isolated bridge networking (`projectsdisplay_default`).
+
+C. KUBERNETES (K8S) CLUSTERING ARCHITECTURE
+  * Manifests Located in `k8s/`:
+      - `frontend-deployment.yaml`: Replicated frontend Pods with ClusterIP service.
+      - `backend-deployment.yaml` : Replicated backend Pods with ClusterIP service.
+      - `configmap-secret.yaml`   : ConfigMaps for public parameters and Kubernetes 
+                                    Secrets for encrypted database & JWT keys.
+      - `ingress.yaml`            : NGINX Ingress Controller routing HTTP requests:
+                                      * `/graphql` -> backend-service:4000
+                                      * `/`        -> frontend-service:3000
+
+D. CI/CD AUTOMATION (GITHUB ACTIONS)
+  * Workflow Configuration: `.github/workflows/ci-cd.yml`
+  * Triggers: Automatic triggers on push & pull-request to `main` and `master`.
+  * Pipeline Stages:
+      1. Linting & Static Code Analysis (Oxlint / ESLint)
+      2. Automated Test & Build execution across both Frontend and Backend
+      3. Docker Image verification: Builds both Docker images in CI to guarantee 
+         containerization integrity before production release.
+
+
+5. CODE QUALITY, TESTING & COMPLIANCE TOOLS
+--------------------------------------------------------------------------------
+  * Unit & E2E Testing   : Vitest 4.1.2 with V8 coverage provider and Supertest
+  * Linters               : ESLint 9.39.4 (Frontend), Oxlint 1.58.0 (Ultra-fast Rust-based Backend linter)
+  * Code Formatting       : Prettier 3.4.2
+  * Version Control       : Git with GitFlow branching model and secret-filtering policies
+
+
+6. DEPENDENCY & VERSION MATRIX (FOR REPORT TABLES)
+--------------------------------------------------------------------------------
+Component / Library             Version         Category / Purpose
+--------------------------------------------------------------------------------
+Node.js                         22.x LTS        Server Runtime Environment
+Next.js                         16.2.9          Frontend Web Framework (App Router)
+React / React-DOM               19.2.4          UI Library & Rendering Engine
+NestJS                          12.0.1          Backend Enterprise Framework
+TypeScript                      6.0.2           Statically Typed Programming Language
+GraphQL                         16.14.2 / 17.0  API Query Language & Runtime
+Apollo Server                   5.5.1           Backend GraphQL Execution Engine
+Apollo Client                   4.3.0           Client GraphQL Data Fetching & Cache
+MongoDB                         7.x / Atlas     NoSQL Document Database
+Mongoose                        9.10.1          MongoDB Object-Document Mapper (ODM)
+Tailwind CSS                    3.x             Utility-first CSS Framework
+GSAP                            3.15.0          Advanced JavaScript Animations
+Motion (Framer Motion)          12.42.2         React Declarative Motion & Gestures
+Passport.js                     0.7.0           Authentication Middleware
+JWT (jsonwebtoken)              9.0.3 / 12.0.2  Stateless Token Authentication
+Bcrypt.js                       3.0.3           Cryptographic Password Hashing
+Nodemailer                      10.0.10         SMTP Email Delivery (OTP Service)
+Sentry SDK                      11.6.0          Error Tracking & Performance Monitoring
+Docker Engine                   29.x            Container Engine & Image Builder
+Docker Compose                  v2+             Multi-Container Local Orchestration
+Kubernetes (K8s)                v1.28+          Cloud Container Orchestration
+Oxlint                          1.58.0          High-Performance Linter
+Vitest                          4.1.2           Next-Gen Unit / Integration Test Runner
+================================================================================
+                    END OF TECHNICAL SPECIFICATION FILE
+================================================================================
