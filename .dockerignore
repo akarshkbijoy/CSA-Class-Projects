@@ -1,0 +1,33 @@
+# Dependencies - never send to Docker
+node_modules
+**/node_modules
+
+# Git
+.git
+.gitignore
+
+# Next.js build output (Docker builds its own)
+.next
+out
+build
+
+# Local env files
+.env
+.env.*
+.env.local
+
+# Dev/test artifacts
+coverage
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Reference designs
+stitch_student_project_showcase/
+
+# IDE
+.vscode
+.idea
